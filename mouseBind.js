@@ -8,10 +8,10 @@ $(document).ready(function(){
 	    var delta = evt.detail ? evt.detail*(-40) : evt.wheelDelta //check for detail first, because it is used by Opera and FF
 
 	    if(delta > 0) {
-	        $('#time-label').html(decrementMinutes(1));
+	        decrementMinutes(1);
 	    }
 	    else{
-	        $('#time-label').html(incrementMinutes(1));
+	        incrementMinutes(1);
 	    }   
 	});
 

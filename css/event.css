@@ -1,17 +1,28 @@
+body {
+	background-color: #2980b9;
+}
+
 .circle {
 	width: 300px;
 	height: 300px;
-	background: red;
+	background: white;
 	-moz-border-radius: 50%;
 	-webkit-border-radius: 50%;
 	border-radius: 50%;
 	position: relative;
+
+	-webkit-animation: sk-emphasize 4.0s infinite ease-in-out;
+	animation: sk-emphasize 4.0s infinite ease-in-out;
 }
 
-.event-font {
-	padding-top: 80px;
-	color : white;
-	z-index: 550;
+#date-wheel {
+	color : #2980b9;
+	padding-top: 85px;
+}
+
+#time-wheel {
+	padding-top: 20px;
+	color : #2980b9;
 }
 
 #dummy-scroll-box {
@@ -20,4 +31,22 @@
 	overflow: auto;
 	position: absolute;
 	padding-top: 200px;
+}
+
+
+/*spinner*/
+
+@-webkit-keyframes sk-emphasize {
+  0%, 100% { -webkit-transform: scale(1.1) }
+  50% { -webkit-transform: scale(1.0) }
+}
+
+@keyframes sk-emphasize {
+  0%, 100% { 
+    transform: scale(1.1);
+    -webkit-transform: scale(1.1);
+  } 50% { 
+    transform: scale(1.0);
+    -webkit-transform: scale(1.0);
+  }
 }
