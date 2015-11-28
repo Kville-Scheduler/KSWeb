@@ -1,47 +1,63 @@
-var kvilleSchedulerApp = angular.module('kville-scheduler', []);
+var kvilleSchedulerApp = angular
+	.module('kville-scheduler', ['ngAnimate','datetimepicker']);
 
-/**
-global function called when google's api loads
-*/
-function gLoad(){
-	angular.element(document).ready(function () {	
-		window.onLoad();
-	});
-}
+kvilleSchedulerApp.controller('EventCenter', ['$scope', 'GoogleAuthCenter', 'parseCenter', function ($scope, authCenter, parseCenter) {
+	$scope.welcomeContentShown;
+	$scope.datetime = '05/13/2015 8:30 AM';
+	//these options are immutable
+	$scope.datetimeOptions = {inline:true,sideBySide:true};
 
-kvilleSchedulerApp.controller('EventCenter', function ($scope) {
+	var blackStartDate;
+	var blueStartDate;
+	var whiteStartDate;
+	var whiteEndDate;
 
-	$scope.beginTentCreate = function() {
-		
+	$scope.createTent = function() {
+		$scope.welcomeContentShown = false;
+		parseCenter.getCurrentSeason().then(
+			function(object){
+				blackStartDate = parseCenter.parseToMoment(object.get('blackStart'));
+				blueStartDate = parseCenter.parseToMoment(object.get('blueStart'));
+				whiteStartDate = parseCenter.parseToMoment(object.get('whiteStart'));
+				whiteEndDate = parseCenter.parseToMoment(object.get('whiteEnd'));
+				$scope.$apply(function() {
+					$scope.datetime = blackStartDate;
+					//breaking out of angular to set min and max dates
+					//because our directive doesn't support it
+					$('#datetimepicker').data('DateTimePicker').minDate(blackStartDate);
+					$('#datetimepicker').data('DateTimePicker').maxDate(whiteEndDate);
+				});
+			},
+			function(error){
+				console.log(error);
+			});
 	}
 
-});
-
-kvilleSchedulerApp.controller('GoogleAuthCenter', ['$scope','gDriveCenter', 'parseCenter', function ($scope, gDriveCenter, parseCenter) {
-	var CLIENT_ID = '861781706221-jbrikss56654b88j6q03m0e0efd19g5k.apps.googleusercontent.com';
-	var SCOPES = ['https://www.googleapis.com/auth/drive'];
-
-	$scope.authValid = false;
-	$scope.tentId = null;
-
-	$scope.onLoad = function() {
-		$scope.checkAuth();
+	$scope.googleLogin = function() {
+		authCenter.authenticate();
 	}
-	window.onLoad = $scope.onLoad;
 
-	$scope.authenticate = function() {
+}]);
+
+kvilleSchedulerApp.factory('GoogleAuthCenter', ['gDriveCenter', 'parseCenter', function (gDriveCenter, parseCenter) {
+	var service = {};
+
+	var CLIENT_ID = '181880965150-5t82e2cbf47v2s6obh44ed56b6mljrpt.apps.googleusercontent.com';
+	var SCOPES = ['https://www.googleapis.com/auth/drive','profile'];
+
+	service.authenticate = function() {
 		gapi.auth.authorize(
 			{client_id: CLIENT_ID, scope: SCOPES, immediate: false},
-			$scope.handleAuthResult);
+			service.handleAuthResult);
 	}
 
 	/**
 	* Check if current user has authorized this application.
 	*/
-	$scope.checkAuth = function () {
+	service.checkAuth = function () {
 		gapi.auth.authorize(
 			{client_id: CLIENT_ID, scope: SCOPES.join(' '), immediate: true},
-			$scope.handleAuthResult);
+			service.handleAuthResult);
 	}
 
 	/**
@@ -49,18 +65,17 @@ kvilleSchedulerApp.controller('GoogleAuthCenter', ['$scope','gDriveCenter', 'par
 	*
 	* @param {Object} authResult Authorization result.
 	*/
-	$scope.handleAuthResult = function(authResult) {
+	service.handleAuthResult = function(authResult) {
 		if (authResult && !authResult.error) {
-			$scope.$apply(function() {
-				$scope.authValid = true;
-			});
-			gDriveCenter.callScriptFunction('getAllDocumentIds');
+			console.log(authResult);
+			//gDriveCenter.callScriptFunction('getAllDocumentIds');
 		} 
 		else {
 			console.log(authResult);
 		}
 	}
 
+	return service;
 }]);
 
 
@@ -69,8 +84,17 @@ kvilleSchedulerApp.factory('parseCenter', function(){
 	
 	Parse.initialize("lnhmq8I9pfJtKHM5QkwoDghTSb3e0YJ74tWDZqe0", "g7LOnC1d5PBeCtVWb8Y3E47ir9xyhDEl8AjFuyj9");
 
-	service.callCloudFunction = function(func){
+	service.getCurrentSeason = function(){
+		return service.callCloudFunction('getCurrentSeason');
+	}
 
+	service.callCloudFunction = function(func,params){
+		return Parse.Cloud.run(func,params);
+	}
+
+	service.parseToMoment = function(date){
+		//make date timezone agnostic
+		return moment(date).utcOffset(0);
 	}
 
 	return service;

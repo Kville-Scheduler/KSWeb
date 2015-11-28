@@ -1,23 +1,22 @@
 <html lang="en" ng-app="kville-scheduler">
 <head>
-<!-- Bootstrap -->
-<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 
-<!-- Latest compiled and minified CSS -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
 
-<!-- Optional theme -->
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css" integrity="sha384-aUGj/X2zp5rLCbBxumKTCw2Z50WgIr1vs/PFN4praOTvYXWlVyh2UtNUU0KAUhAX" crossorigin="anonymous">
-
-<!-- Latest compiled and minified JavaScript -->
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js" integrity="sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
-<!-- End bootstrap -->
-
+<script type="text/javascript" src="/bower_components/jquery/dist/jquery.min.js"></script>
 <!-- Angular -->
 <script src="bower_components/angular/angular.js"></script>
+<script src="bower_components/angular-animate/angular-animate.js"></script>
 <!--controllers-->
 <script src="js/controllers.js"></script>
 <!-- End Angular -->
+
+<link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css" />
+<link rel="stylesheet" href="/bower_components/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css" />
+
+<script type="text/javascript" src="/bower_components/moment/min/moment.min.js"></script>
+<script type="text/javascript" src="/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/bower_components/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js"></script>
+<script type="text/javascript" src="/bower_components/angular-bootstrap-datetimepicker-directive/angular-bootstrap-datetimepicker-directive.js"></script>
 
 <!-- Google Drive API -->
 <script src="https://apis.google.com/js/client.js?onload=gLoad"></script>
@@ -27,25 +26,36 @@
 <script src="https://www.parsecdn.com/js/parse-1.6.7.min.js"></script>
 <!-- End Parse -->
 
-<link rel="stylesheet" href="css/event.css">
-
-<script src="bower_components/moment/min/moment.min.js"></script>
+<link rel="stylesheet" href="css/index.css">
+<link rel="stylesheet" href="css/global.css">
 
 
 </head>
 
 <body data-ng-controller="EventCenter">
-	<div class="container">
-		<div data-ng-controller="GoogleAuthCenter" ng-hide="authValid">
-			<button ng-click="authenticate()">
-				Sign-in to Google Drive
+	<div class="container animated-show-hide-container" ng-init="welcomeContentShown=true" ng-show="welcomeContentShown">
+		<div class="text-center">
+			<div><h1>Hi there.</h1></div>
+			<div><h2>This page is for registering a tent</h2></div>
+			<div><h3>Once you register, you'll be able to invite team members, schedule hours, view stats, and more</h3></div>		
+			<button ng-click="createTent()">
+				Register
 			</button>
 		</div>
-		<div ng-show="tendId == null && authValid">
-			Hmm, we couldn't find a tenting schedule in your Google Drive.  So you probably need to either:
-			<button ng-click="beginTentCreate()">1) Create a schedule</button>
-			<button ng-click="connectSchedule()">2) Add a schedule to your Drive</button>
-		</div>
+	</div>
+	<div class="container animated-show-hide-container" ng-show="!welcomeContentShown">
+		<h1>Cool, when do you want to start?</h1>
+		<div class="form-group">
+			<div class="col-sm-7">
+					<div id="datetimepicker" datetimepicker
+						ng-model="datetime"
+					    datetimepicker-options="{{datetimeOptions}}">
+					</div>
+				</div>
+			</div>
+		<button ng-click="googleLogin()">
+			Log-in
+		</button>
 	</div>
 </body>
 </html>
