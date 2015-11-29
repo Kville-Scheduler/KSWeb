@@ -1,7 +1,7 @@
 var kvilleSchedulerApp = angular
 	.module('kville-scheduler', ['ngAnimate','datetimepicker']);
 
-kvilleSchedulerApp.controller('EventCenter', ['$scope', 'GoogleAuthCenter', 'parseCenter', function ($scope, authCenter, parseCenter) {
+kvilleSchedulerApp.controller('EventCenter', ['$scope', 'GoogleAuthCenter', 'parseCenter', 'gDriveCenter', function ($scope, authCenter, parseCenter, gDriveCenter) {
 	$scope.welcomeContentShown;
 	$scope.datetime = '05/13/2015 8:30 AM';
 	//these options are immutable
@@ -12,7 +12,7 @@ kvilleSchedulerApp.controller('EventCenter', ['$scope', 'GoogleAuthCenter', 'par
 	var whiteStartDate;
 	var whiteEndDate;
 
-	$scope.createTent = function() {
+	$scope.showTentCalendar = function() {
 		$scope.welcomeContentShown = false;
 		parseCenter.getCurrentSeason().then(
 			function(object){
@@ -33,46 +33,60 @@ kvilleSchedulerApp.controller('EventCenter', ['$scope', 'GoogleAuthCenter', 'par
 			});
 	}
 
-	$scope.googleLogin = function() {
-		authCenter.authenticate();
+	$scope.createTent = function() {
+		authCenter.authenticate().then(function(){
+			gDriveCenter.getProfileInfo().then(function(info){
+				var name = info.data.displayName;
+				console.log(name);
+			});
+		});
 	}
 
 }]);
 
-kvilleSchedulerApp.factory('GoogleAuthCenter', ['gDriveCenter', 'parseCenter', function (gDriveCenter, parseCenter) {
+kvilleSchedulerApp.factory('GoogleAuthCenter', ['gDriveCenter', 'parseCenter', '$q', '$http', function (gDriveCenter, parseCenter, $q, $http) {
 	var service = {};
 
 	var CLIENT_ID = '181880965150-5t82e2cbf47v2s6obh44ed56b6mljrpt.apps.googleusercontent.com';
-	var SCOPES = ['https://www.googleapis.com/auth/drive','profile'];
+	var SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/plus.me'];
 
+
+	/**
+	* Authenticate a user
+	**/
 	service.authenticate = function() {
-		gapi.auth.authorize(
-			{client_id: CLIENT_ID, scope: SCOPES, immediate: false},
-			service.handleAuthResult);
+		return $q(function(resolve,reject){
+			privateAuth(true).then(function(){
+				//immediate auth was successful
+				resolve();
+			}, function(){
+				//immediate auth failed, authenticate user
+				privateAuth(false).then(function(){
+					resolve();
+				});
+			});
+		});
 	}
 
 	/**
-	* Check if current user has authorized this application.
+	* Check if current user has authorized this application or authorize a user
+	* @param immediate
+	* whether to attempt authorization (false) or check authorization (true)
 	*/
-	service.checkAuth = function () {
-		gapi.auth.authorize(
-			{client_id: CLIENT_ID, scope: SCOPES.join(' '), immediate: true},
-			service.handleAuthResult);
-	}
-
-	/**
-	* Handle response from authorization server.
-	*
-	* @param {Object} authResult Authorization result.
-	*/
-	service.handleAuthResult = function(authResult) {
-		if (authResult && !authResult.error) {
-			console.log(authResult);
-			//gDriveCenter.callScriptFunction('getAllDocumentIds');
-		} 
-		else {
-			console.log(authResult);
-		}
+	privateAuth = function(immediate){
+		return $q(function(resolve, reject) {
+			gapi.auth.authorize(
+				{client_id: CLIENT_ID, scope: SCOPES, immediate: immediate},
+				function(authResult){
+					if (authResult && !authResult.error) {
+						$http.defaults.headers.get = {'Authorization':'Bearer '+authResult.access_token};
+						resolve();
+					} 
+					else {
+						reject();
+					}
+				});
+		});
 	}
 
 	return service;
@@ -100,10 +114,17 @@ kvilleSchedulerApp.factory('parseCenter', function(){
 	return service;
 });
 
-kvilleSchedulerApp.factory('gDriveCenter', function(){
+kvilleSchedulerApp.factory('gDriveCenter', ['$http', function ($http) {
 	var service = {};
 
     var scriptId = "M1s7xcfLTNa0sj06JM6RTcmpgqzTiy9x4";
+
+    service.getProfileInfo = function(){
+    	return $http({
+    		method: 'GET',
+    		url: 'https://www.googleapis.com/plus/v1/people/me'
+    	});
+    }
 
     service.callScriptFunction = function(func){
 		// Create an execution request object.
@@ -135,4 +156,4 @@ kvilleSchedulerApp.factory('gDriveCenter', function(){
 	}
 
 	return service;
-});
+}]);
