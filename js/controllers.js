@@ -7,6 +7,8 @@ kvilleSchedulerApp.controller('EventCenter', ['$scope', 'GoogleAuthCenter', 'par
 	//these options are immutable
 	$scope.datetimeOptions = {inline:true,sideBySide:true};
 
+	var parseUser;
+
 	var blackStartDate;
 	var blueStartDate;
 	var whiteStartDate;
@@ -34,11 +36,24 @@ kvilleSchedulerApp.controller('EventCenter', ['$scope', 'GoogleAuthCenter', 'par
 	}
 
 	$scope.createTent = function() {
-		authCenter.authenticate().then(function(){
-			gDriveCenter.getProfileInfo().then(function(info){
-				var name = info.data.displayName;
-				console.log(name);
+		authCenter.authenticate().then(function(authToken){
+			return parseCenter.logIn(authToken);
+		}).then(function(user){
+			parseUser = user;
+			return gDriveCenter.getProfileInfo();
+		}).then(function(info){
+			var name = info.data.displayName;
+			parseUser.set("name",name);
+			return parseUser.save();
+		}).then(function(){
+			gDriveCenter.generateSchedule($scope.datetime,blackStartDate,blueStartDate,whiteStartDate,whiteEndDate).then(function(response){
+				console.log(response);
+			}, function(error){
+				console.log(error);
 			});
+		}, function(error){
+			alert("We ran into an issue... Error: "+error);
+			console.log(error);
 		});
 	}
 
@@ -48,7 +63,7 @@ kvilleSchedulerApp.factory('GoogleAuthCenter', ['gDriveCenter', 'parseCenter', '
 	var service = {};
 
 	var CLIENT_ID = '181880965150-5t82e2cbf47v2s6obh44ed56b6mljrpt.apps.googleusercontent.com';
-	var SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/plus.me'];
+	var SCOPES = ['https://www.googleapis.com/auth/drive','https://www.googleapis.com/auth/plus.me','https://spreadsheets.google.com/feeds'];
 
 
 	/**
@@ -56,13 +71,13 @@ kvilleSchedulerApp.factory('GoogleAuthCenter', ['gDriveCenter', 'parseCenter', '
 	**/
 	service.authenticate = function() {
 		return $q(function(resolve,reject){
-			privateAuth(true).then(function(){
+			privateAuth(true).then(function(authToken){
 				//immediate auth was successful
-				resolve();
-			}, function(){
+				resolve(authToken);
+			}, function(authToken){
 				//immediate auth failed, authenticate user
 				privateAuth(false).then(function(){
-					resolve();
+					resolve(authToken);
 				});
 			});
 		});
@@ -80,7 +95,7 @@ kvilleSchedulerApp.factory('GoogleAuthCenter', ['gDriveCenter', 'parseCenter', '
 				function(authResult){
 					if (authResult && !authResult.error) {
 						$http.defaults.headers.get = {'Authorization':'Bearer '+authResult.access_token};
-						resolve();
+						resolve(authResult.access_token);
 					} 
 					else {
 						reject();
@@ -93,10 +108,22 @@ kvilleSchedulerApp.factory('GoogleAuthCenter', ['gDriveCenter', 'parseCenter', '
 }]);
 
 
-kvilleSchedulerApp.factory('parseCenter', function(){
+kvilleSchedulerApp.factory('parseCenter', ['$q', function ($q) {
 	var service = {};
 	
 	Parse.initialize("lnhmq8I9pfJtKHM5QkwoDghTSb3e0YJ74tWDZqe0", "g7LOnC1d5PBeCtVWb8Y3E47ir9xyhDEl8AjFuyj9");
+
+	service.logIn = function(authToken){
+		return $q(function(resolve,reject){
+			service.callCloudFunction('authenticatedSignin',{access_token:authToken}).then(function(sessionToken){
+				return Parse.User.become(sessionToken);
+			}).then(function(user){
+				resolve(user);
+			}, function(error){
+				reject(error);
+			});
+		});
+	}
 
 	service.getCurrentSeason = function(){
 		return service.callCloudFunction('getCurrentSeason');
@@ -112,12 +139,17 @@ kvilleSchedulerApp.factory('parseCenter', function(){
 	}
 
 	return service;
-});
+}]);
 
-kvilleSchedulerApp.factory('gDriveCenter', ['$http', function ($http) {
+kvilleSchedulerApp.factory('gDriveCenter', ['$http','$q', function ($http,$q) {
 	var service = {};
 
-    var scriptId = "M1s7xcfLTNa0sj06JM6RTcmpgqzTiy9x4";
+    var scriptId = "MAL3MZOYPUIsYwMpyePn0h2pgqzTiy9x4";
+
+    service.generateSchedule = function(startDate,blackStartDate,blueStartDate,whiteStartDate,whiteEndDate){
+    	var params = [startDate,blackStartDate,blueStartDate,whiteStartDate,whiteEndDate];
+    	return service.callScriptFunction("generateSchedule",params);
+    }
 
     service.getProfileInfo = function(){
     	return $http({
@@ -126,32 +158,34 @@ kvilleSchedulerApp.factory('gDriveCenter', ['$http', function ($http) {
     	});
     }
 
-    service.callScriptFunction = function(func){
-		// Create an execution request object.
-		var request = {
-			'function': func
-		};
+    service.callScriptFunction = function(func,params){
+    	return $q(function(resolve,reject){
+			// Create an execution request object.
+			var request = {
+				'function': func,
+				'parameters': params
+			};
 
-		// Make the API request.
-		var op = gapi.client.request({
-			'root': 'https://script.googleapis.com',
-			'path': 'v1/scripts/' + scriptId + ':run',
-			'method': 'POST',
-			'body': request
-		});
+			// Make the API request.
+			var op = gapi.client.request({
+				'root': 'https://script.googleapis.com',
+				'path': 'v1/scripts/' + scriptId + ':run',
+				'method': 'POST',
+				'body': request
+			});
 
-		op.execute(function(resp) {
-			if (resp.error && resp.error.status) {
-				// The API encountered a problem before the script
-				// started executing.
-				console.log(resp.error);
-			} else if (resp.error) {
-				// The API executed, but the script returned an error.
-				console.log(resp.error);
-			} else {
-				console.log(resp.response.result);
-				return resp.response.result;
-			}
+			op.execute(function(resp) {
+				if (resp.error && resp.error.status) {
+					// The API encountered a problem before the script
+					// started executing.
+					reject(resp.error);
+				} else if (resp.error) {
+					// The API executed, but the script returned an error.
+					reject(resp.error);
+				} else {
+					resolve(resp.response.result);
+				}
+			});
 		});
 	}
 

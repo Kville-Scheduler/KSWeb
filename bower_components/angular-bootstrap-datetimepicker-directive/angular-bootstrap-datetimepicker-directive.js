@@ -40,7 +40,7 @@ angular
             .on('dp.change', function (e) {
               if (ngModelCtrl) {
                 $timeout(function () {
-                  ngModelCtrl.$setViewValue(e.target.value);
+                  ngModelCtrl.$setViewValue(e.date);
                 });
               }
             })
