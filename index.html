@@ -33,30 +33,57 @@
 </head>
 
 <body data-ng-controller="EventCenter">
-	<div class="container animated-show-hide-container" ng-init="welcomeContentShown=true" ng-show="welcomeContentShown">
-		<div class="text-center">
-			<div><h1>Hi there.</h1></div>
-			<div><h2>This page is for registering a tent</h2></div>
-			<div><h3>Once you register, you'll be able to invite team members, schedule hours, view stats, and more</h3></div>		
-			<button ng-click="showTentCalendar()">
-				Register
-			</button>
+	<div ng-show="existingTentId != null">
+		<div class="container" ng-show="googleToken == ''">
+			<div class="text-center">
+				<button ng-click="googleSignIn()">
+					Connect to Google
+				</button>
+			</div>
+		</div>
+		<div class="container" ng-show="googleToken != ''">
+			<div class="text-center">
+				<h2>You haven't signed up for any hours!</h2>
+				<h3>You should do that, then come back here to view your schedule and more</h3>
+				<button ng-click="visitGoogleDoc()">
+					Go to spreadsheet
+				</button>
+			</div>
 		</div>
 	</div>
-	<div class="container animated-show-hide-container" ng-show="!welcomeContentShown">
-		<h1>Cool, when do you want to start?</h1>
-		<div class="form-group">
-			<div class="col-sm-7">
-					<div id="datetimepicker" datetimepicker
-						ng-model="datetime"
-						ng-change="datetimeChanged()"
-					    datetimepicker-options="{{datetimeOptions}}">
+	<div ng-show="existingTentId == null">
+		<div class="container animated-show-hide-container" ng-show="welcomeContentShown">
+			<div class="text-center">
+				<div><h1>Hi there.</h1></div>
+				<div><h2>This page is for registering a tent</h2></div>
+				<div><h3>Once you register, you'll be able to invite tent members, schedule hours, view stats, and more</h3></div>		
+				<button ng-click="showTentCalendar()">
+					Register
+				</button>
+			</div>
+		</div>
+		<div class="container animated-show-hide-container" ng-show="!welcomeContentShown && !doneBuilding">
+			<div class="text-center">
+				<h1>When did you want to start?</h1>
+				<div class="form-group">
+					<div class="col-sm-7">
+						<div id="datetimepicker" datetimepicker
+							ng-model="datetime"
+							ng-change="datetimeChanged()"
+						    datetimepicker-options="{{datetimeOptions}}">
+						</div>
 					</div>
 				</div>
 			</div>
-		<button ng-click="createTent()">
-			Create Schedule
-		</button>
+			<button ng-click="createTent()">
+				Create Schedule
+			</button>
+		</div>
+		<div class="container animated-show-hide-container" ng-show="doneBuilding">
+			<div class="text-center">
+				<h2>Nice! We're building your schedule now. Let your tent group know that your tenting website is <a ng-href='http://localhost:8000/?tent={{tentId}}'>http://localhost:8000/?tent={{tentId}}</a></h2>
+			</div>
+		</div>
 	</div>
 </body>
 </html>
